@@ -8,7 +8,7 @@ sdk_version: 4.44.0
 app_file: app.py
 pinned: false
 license: mit
-short_description: Fine-tuned Phi3-Mini model trained on Jerome Powell's Q&A sessions
+short_description: AI assistant fine-tuned on Jerome Powell's Q&A sessions
 ---
 
 # 🏦 Jerome Powell AI Assistant
