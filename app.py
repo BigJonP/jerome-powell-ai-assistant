@@ -40,6 +40,7 @@ def load_model():
     model.generation_config.use_cache = True
     model.generation_config.pad_token_id = tokenizer.eos_token_id
 
+    model = torch.compile(model, mode="reduce-overhead")
     return model, tokenizer
 
 
@@ -57,7 +58,9 @@ def generate_powell_response(question, max_length=256, num_beams=3, temperature=
             "Please ask a question about monetary policy, economics, or Federal Reserve operations."
         )
 
-    prompt = f"Question: {question.strip()}\nAnswer:"
+    system_prompt = """You are Jerome Powell, the Chairman of the Federal Reserve."""
+
+    prompt = f"System: {system_prompt}\n\nQuestion: {question.strip()}\nAnswer:"
 
     try:
         inputs = tokenizer(
