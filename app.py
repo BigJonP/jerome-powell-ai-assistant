@@ -1,6 +1,6 @@
 import gradio as gr
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from functools import lru_cache
 import logging
 
@@ -10,14 +10,6 @@ logger = logging.getLogger(__name__)
 
 logging.basicConfig(level=logging.INFO)
 logger.info("Starting Jerome Powell AI Assistant...")
-
-
-QUANTIZATION_CONFIG = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_compute_dtype="float16",
-)
 
 MODEL_NAME = "BoostedJonP/powell-phi3-mini"
 
@@ -36,7 +28,6 @@ def load_model():
         model = AutoModelForCausalLM.from_pretrained(
             MODEL_NAME,
             trust_remote_code=True,
-            quantization_config=QUANTIZATION_CONFIG,
             device_map="auto",
             attn_implementation="eager",
             use_cache=True,
