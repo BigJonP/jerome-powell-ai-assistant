@@ -28,6 +28,7 @@ def load_model():
         model = AutoModelForCausalLM.from_pretrained(
             MODEL_NAME,
             trust_remote_code=True,
+            torch_dtype=torch.float16,
             device_map="auto",
             attn_implementation="eager",
             use_cache=True,
