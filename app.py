@@ -25,15 +25,32 @@ def load_model():
             trust_remote_code=True,
             cache_dir="/tmp/model_cache",
         )
-        model = AutoModelForCausalLM.from_pretrained(
-            MODEL_NAME,
-            trust_remote_code=True,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            attn_implementation="eager",
-            use_cache=True,
-            cache_dir="/tmp/model_cache",
-        )
+
+        # Check if CUDA is available, otherwise use CPU-friendly settings
+        if torch.cuda.is_available():
+            logger.info("CUDA available, loading with GPU optimizations")
+            model = AutoModelForCausalLM.from_pretrained(
+                MODEL_NAME,
+                trust_remote_code=True,
+                torch_dtype=torch.float16,
+                device_map="auto",
+                attn_implementation="eager",
+                use_cache=True,
+                cache_dir="/tmp/model_cache",
+            )
+        else:
+            logger.info("CUDA not available, loading with CPU optimizations")
+            model = AutoModelForCausalLM.from_pretrained(
+                MODEL_NAME,
+                trust_remote_code=True,
+                torch_dtype=torch.float32,  # Use float32 for CPU
+                device_map="cpu",  # Explicitly set to CPU
+                attn_implementation="eager",
+                use_cache=True,
+                cache_dir="/tmp/model_cache",
+                low_cpu_mem_usage=True,  # Helpful for CPU environments
+            )
+
         logger.info("Model loaded successfully!")
     except Exception as e:
         logger.error(f"Error loading model: {e}")
@@ -42,7 +59,14 @@ def load_model():
     model.generation_config.use_cache = True
     model.generation_config.pad_token_id = tokenizer.eos_token_id
 
-    model = torch.compile(model, mode="reduce-overhead")
+    # Only compile on GPU, skip compilation on CPU to avoid compatibility issues
+    if torch.cuda.is_available():
+        try:
+            model = torch.compile(model, mode="reduce-overhead")
+            logger.info("Model compiled successfully")
+        except Exception as e:
+            logger.warning(f"Model compilation failed: {e}, continuing without compilation")
+
     return model, tokenizer
 
 
@@ -60,6 +84,10 @@ def generate_powell_response(question, max_length=256, num_beams=3, temperature=
             "Please ask a question about monetary policy, economics, or Federal Reserve operations."
         )
 
+    # Log device information for debugging
+    device = next(model.parameters()).device
+    logger.info(f"Generating response on device: {device}")
+
     system_prompt = """You are Jerome Powell, the Chairman of the Federal Reserve."""
 
     prompt = f"System: {system_prompt}\n\nQuestion: {question.strip()}\nAnswer:"
@@ -73,8 +101,11 @@ def generate_powell_response(question, max_length=256, num_beams=3, temperature=
             padding=False,
         )
 
-        if torch.cuda.is_available():
+        # Move inputs to the same device as the model
+        if torch.cuda.is_available() and next(model.parameters()).is_cuda:
             inputs = {k: v.cuda() for k, v in inputs.items()}
+        else:
+            inputs = {k: v.cpu() for k, v in inputs.items()}
 
         with torch.no_grad():
             generation_config = {
