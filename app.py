@@ -40,36 +40,25 @@ def load_model():
             )
         else:
             logger.info("CUDA not available, loading with CPU optimizations")
-            try:
-                model = AutoModelForCausalLM.from_pretrained(
-                    MODEL_NAME,
-                    trust_remote_code=True,
-                    torch_dtype=torch.float32,  # Use float32 for CPU
-                    device_map="cpu",  # Explicitly set to CPU
-                    attn_implementation="eager",
-                    use_cache=True,
-                    cache_dir="/tmp/model_cache",
-                    low_cpu_mem_usage=True,  # Helpful for CPU environments
-                )
-            except Exception as cpu_error:
-                logger.warning(f"CPU loading failed with device_map: {cpu_error}")
-                # Fallback: try without device_map
-                logger.info("Trying fallback CPU loading without device_map")
-                model = AutoModelForCausalLM.from_pretrained(
-                    MODEL_NAME,
-                    trust_remote_code=True,
-                    torch_dtype=torch.float32,
-                    attn_implementation="eager",
-                    use_cache=True,
-                    cache_dir="/tmp/model_cache",
-                    low_cpu_mem_usage=True,
-                )
-                # Move model to CPU manually
-                model = model.to("cpu")
+            model = AutoModelForCausalLM.from_pretrained(
+                MODEL_NAME,
+                trust_remote_code=True,
+                torch_dtype=torch.float32,
+                attn_implementation="eager",
+                use_cache=True,
+                cache_dir="/tmp/model_cache",
+                low_cpu_mem_usage=True,
+            )
+            # Move model to CPU manually
+            model = model.to("cpu")
 
         logger.info("Model loaded successfully!")
+        logger.info(f"Model device: {next(model.parameters()).device}")
+        logger.info(f"Model dtype: {next(model.parameters()).dtype}")
+
     except Exception as e:
         logger.error(f"Error loading model: {e}")
+        logger.error(f"Error type: {type(e).__name__}")
         return None, None
 
     model.generation_config.use_cache = True
